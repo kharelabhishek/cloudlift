@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { Button } from '@/components/ui/button'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -11,15 +11,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { createAccount } from '@/lib/actions/users.actions'
-import OtpModal from '@/components/OTPModal'
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { createAccount, signInUser } from '@/lib/actions/users.actions';
+import OtpModal from '@/components/OTPModal';
 
-type FormType = 'sign-up' | 'sign-in'
+type FormType = 'sign-up' | 'sign-in';
 
 const authFormSchema = (formType: FormType) => {
   return z.object({
@@ -28,39 +28,48 @@ const authFormSchema = (formType: FormType) => {
         ? z.string().min(2).max(50)
         : z.string().optional(),
     email: z.string().email()
-  })
-}
+  });
+};
 
 const AuthForm = ({ type }: { type: FormType }) => {
-  const [isloading, setIsloading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const formSchema = authFormSchema(type)
-  const [accountId, setAccountId] = useState('')
+  const [isloading, setIsloading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const formSchema = authFormSchema(type);
+  const [accountId, setAccountId] = useState('');
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
       email: ''
     }
-  })
+  });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsloading(true)
-    setErrorMessage('')
+    setIsloading(true);
+    setErrorMessage('');
     try {
       const user = await createAccount({
         fullName: values.fullName || '',
         email: values.email
-      })
+      });
+      // const user =
+      // type === 'sign-up'
+      //   ? await createAccount({
+      //       fullName: values.fullName || '',
+      //       email: values.email
+      //     })
+      //   : await signInUser({ email: values.email });
 
-      setAccountId(user.accountId)
+      setAccountId(user.accountId);
     } catch (error) {
-      console.error(error)
-      setErrorMessage('Failed to create account.')
+      console.error(error);
+      type === 'sign-up'
+        ? setErrorMessage('Failed to create account.')
+        : setErrorMessage('No account Found. Please sign up first.');
     } finally {
-      setIsloading(false)
+      setIsloading(false);
     }
-  }
+  };
   return (
     <>
       <Form {...form}>
@@ -146,6 +155,6 @@ const AuthForm = ({ type }: { type: FormType }) => {
         <OtpModal email={form.getValues().email} accountId={accountId} />
       )}
     </>
-  )
-}
-export default AuthForm
+  );
+};
+export default AuthForm;

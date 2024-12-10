@@ -1,10 +1,11 @@
 'use server';
 
-import { createSessionAdmin } from '@/lib/appwrite';
+import { createSessionAdmin, createSessionClient } from '@/lib/appwrite';
 import { appwriteConfig } from '@/lib/appwrite/config';
 import { ID, Query } from 'node-appwrite';
 import { parseStringify } from '@/lib/utils';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 const getUserByEmail = async (email: string) => {
   const { database } = await createSessionAdmin();
@@ -71,7 +72,6 @@ export const verifySecret = async (userId: string, password: string) => {
     const { account } = await createSessionAdmin();
     const session = await account.createSession(userId, password);
 
-    console.log(session);
     (await cookies()).set('appwrite-secret', session.secret, {
       path: '/',
       httpOnly: true,
@@ -81,5 +81,47 @@ export const verifySecret = async (userId: string, password: string) => {
     return parseStringify({ sessionId: session.$id });
   } catch (error) {
     handleError(error, 'Failed to verify secret.');
+  }
+};
+
+export const getCurrentUser = async () => {
+  const { account, database } = await createSessionClient();
+
+  const result = await account.get();
+
+  const user = await database.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.userCollectionId,
+    [Query.equal('accountId', result.$id)]
+  );
+
+  if (user.total < 0) return null;
+
+  return parseStringify(user.documents[0]);
+};
+
+export const signOutUser = async (): Promise<void> => {
+  try {
+    const { account } = await createSessionClient();
+    await account.deleteSession('current');
+    (await cookies()).delete('appwrite-secret');
+  } catch (error) {
+    handleError(error, 'Failed to sign out user.');
+  } finally {
+    redirect('/sign-in');
+  }
+};
+
+export const signInUser = async ({ email }: { email: string }) => {
+  try {
+    const existingUser = await getUserByEmail(email);
+
+    if (existingUser) {
+      await sendEmailOTP(email);
+      return parseStringify({ accountId: existingUser.$id });
+    }
+    return parseStringify({ accountId: null, error: 'User not found.' });
+  } catch (error) {
+    handleError(error, 'Failed to sign in user.');
   }
 };
